@@ -1,6 +1,7 @@
 # In Python, define a schema
 from pyspark.sql.types import *
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, countDistinct
 
 # Create a SparkSession
 spark = SparkSession.builder.appName("SanFranciscoFireDepartment").getOrCreate()
@@ -38,10 +39,28 @@ fire_schema = StructType([StructField('CallNumber', IntegerType(), True),
 # Use the DataFrameReader interface to read a CSV file
 sf_fire_file = "./sf-fire-calls.csv"
 fire_df = spark.read.csv(sf_fire_file, header=True, schema=fire_schema)
-fire_df.write.format("parquet").save("./fire_calls.parquet")
+#fire_df.write.format("parquet").save("./fire_calls.parquet")
 
 # save as table
+'''
 parquet_table = "parquet_table"
 fire_df.write.format("parquet").saveAsTable(parquet_table)
+'''
+
+#Projection (Filtering)
+few_fire_df = fire_df \
+    .select("IncidentNumber", "AvailableDtTm", "CallType") \
+    .where(col("CallType") != "Medical Incident")
 
 
+fire_df \
+    .select("CallType") \
+    .where( col("CallType").isNotNull() ) \
+    .agg(countDistinct("CallType").alias("DistinctCallTypes"))\
+    .show()
+
+fire_df \
+    .select("CallType") \
+    .where(col("CallType").isNotNull()) \
+    .distinct() \
+    .show(10, False)
